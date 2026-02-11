@@ -19,6 +19,7 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
+import auth  # Authentication module
 
 # Page configuration
 st.set_page_config(
@@ -190,6 +191,10 @@ def calculate_unweighted_dar(df_subset):
 
 
 def main():
+    # Authentication check - must be logged in to access dashboard
+    if not auth.check_password():
+        st.stop()  # Stop execution if not authenticated
+    
     # Header
     st.markdown(
         '<div class="main-header">'
@@ -221,6 +226,9 @@ def main():
     
     # Sidebar filters
     st.sidebar.header("🔍 Filters")
+    
+    # Show logout button in sidebar
+    auth.show_logout_button()
     
     # Survey cycle filter
     available_cycles = sorted(df['Survey_Cycle'].unique())
