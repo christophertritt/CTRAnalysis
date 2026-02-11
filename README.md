@@ -13,26 +13,45 @@ Official Analysis Edition for the City of Bellevue Transportation Department. Im
 
 ## Quick start
 
-1. **Clone or create the repo** (see [Connect to GitHub](#connect-to-github) below).
-2. **Create a virtual environment and install dependencies:**
+### Automated Setup (Recommended)
+
+```bash
+./start.sh
+```
+
+This script will:
+- Check Python installation
+- Create and activate virtual environment
+- Install all dependencies
+- Verify data file exists
+- Launch the dashboard
+
+### Manual Setup
+
+1. **Create a virtual environment and install dependencies:**
 
    ```bash
-   cd CTR3
    python -m venv .venv
    source .venv/bin/activate   # Windows: .venv\Scripts\activate
    pip install -r requirements.txt
    ```
 
-3. **Ensure the data file is present:**  
-   `CTR_Master_Dataset_2003-2025_CLEANED.csv` in the project root.
+2. **Ensure the data file is present:**  
+   `CTR_Master_Dataset_2003-2025_CLEANED.csv` in the project root
+   (See [DATA_DICTIONARY.md](DATA_DICTIONARY.md) for column definitions)
 
-4. **Run the dashboard:**
+3. **Run the dashboard:**
 
    ```bash
    streamlit run bellevue_ctr_dashboard_official_v3.py
    ```
 
-   Open the URL shown in the terminal (usually http://localhost:8501).
+   Or use the Makefile:
+   ```bash
+   make run
+   ```
+
+   Open the URL shown in the terminal (usually http://localhost:8501)
 
 ## Connect to GitHub
 
@@ -85,7 +104,66 @@ Official Analysis Edition for the City of Bellevue Transportation Department. Im
 
 ## Documentation
 
-See **Official_Dashboard_Implementation_Guide.md** for implementation details, formulas, and dashboard structure.
+- **[Official_Dashboard_Implementation_Guide.md](Official_Dashboard_Implementation_Guide.md)** - Implementation details, formulas, and dashboard structure
+- **[DATA_DICTIONARY.md](DATA_DICTIONARY.md)** - Complete column definitions and data schemas
+
+## Troubleshooting
+
+### Data file not found
+**Error:** `⚠️ Data file not found. Please ensure CTR_Master_Dataset_2003-2025_CLEANED.csv...`
+
+**Solution:** Ensure `CTR_Master_Dataset_2003-2025_CLEANED.csv` is in the same directory as the Python script.
+
+### Import errors
+**Error:** `ModuleNotFoundError: No module named 'streamlit'`
+
+**Solution:**
+```bash
+source .venv/bin/activate  # Activate virtual environment first
+pip install -r requirements.txt
+```
+
+### Port already in use
+**Error:** `Port 8501 is already in use`
+
+**Solution:**
+```bash
+# Kill existing Streamlit process
+pkill -f streamlit
+# Or use a different port
+streamlit run bellevue_ctr_dashboard_official_v3.py --server.port 8502
+```
+
+### Slow performance
+If the dashboard is slow to load:
+- Check file size of CSV (should be < 10MB)
+- Use the cached version (TTL: 1 hour)
+- Consider filtering to fewer survey cycles
+- Close other browser tabs
+
+### Python version issues
+Requires Python 3.8 or later. Check your version:
+```bash
+python --version
+```
+
+## Development
+
+### Makefile Commands
+```bash
+make help      # Show all available commands
+make install   # Install dependencies
+make run       # Run the dashboard
+make clean     # Clean Python cache files
+make lint      # Run linting checks
+make format    # Format code with black
+```
+
+### Code Quality
+The codebase follows PEP 8 style guidelines. Run linting before committing:
+```bash
+make lint
+```
 
 ## Data
 

@@ -5,7 +5,7 @@ Based on: CTR Data Analysis Guidelines (Updated 3/24/2017)
 
 Implements all required calculations per official protocols:
 - Drive-Alone Rate (DAR) with weighted and unweighted metrics
-- Non-Drive-Alone Travel (NDAT) 
+- Non-Drive-Alone Travel (NDAT)
 - VMT per Employee tracking
 - Mode split analysis
 - Response rate compliance
@@ -19,8 +19,6 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
-from plotly.subplots import make_subplots
-import numpy as np
 
 # Page configuration
 st.set_page_config(
@@ -61,10 +59,15 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # Load data (cached; TTL 1 hour so updated CSV is picked up)
+
+
 @st.cache_data(ttl=3600)
 def load_data():
     """Load the cleaned CTR master dataset with memory-efficient dtypes."""
-    df = pd.read_csv('CTR_Master_Dataset_2003-2025_CLEANED.csv', low_memory=False)
+    df = pd.read_csv(
+        'CTR_Master_Dataset_2003-2025_CLEANED.csv',
+        low_memory=False
+    )
     df['Location'] = df['Location'].astype('category')
     df['Survey_Cycle'] = pd.Categorical(
         df['Survey_Cycle'],
@@ -112,14 +115,15 @@ def compute_cycle_summary(selected_cycles_tuple, location_filter_tuple):
     }).reset_index()
     cycle_summary.columns = [
         'Survey_Cycle', 'Total_Employees', 'Avg_VMT_per_Employee',
-        'Unweighted_DAR', 'Worksites', 'Total_Yearly_VMT', 'Total_GHG_Emissions',
-        'Total_Telework_Days', 'Total_Bus_Trips', 'Total_Train_Trips',
-        'Total_Carpool_Trips', 'Total_Vanpool_Trips', 'Total_Walk_Trips',
-        'Total_Bike_Trips', 'Total_DriveAlone_Trips', 'Total_Weekly_Trips',
-        'Total_Surveys_Returned', 'Avg_Response_Rate'
+        'Unweighted_DAR', 'Worksites', 'Total_Yearly_VMT',
+        'Total_GHG_Emissions', 'Total_Telework_Days', 'Total_Bus_Trips',
+        'Total_Train_Trips', 'Total_Carpool_Trips', 'Total_Vanpool_Trips',
+        'Total_Walk_Trips', 'Total_Bike_Trips', 'Total_DriveAlone_Trips',
+        'Total_Weekly_Trips', 'Total_Surveys_Returned', 'Avg_Response_Rate'
     ]
     cycle_summary['Weighted_DAR'] = (
-        cycle_summary['Total_DriveAlone_Trips'] / cycle_summary['Total_Weekly_Trips']
+        cycle_summary['Total_DriveAlone_Trips'] /
+        cycle_summary['Total_Weekly_Trips']
     )
     cycle_summary['NDAT'] = 1 - cycle_summary['Weighted_DAR']
     cycle_summary['Transit_Share'] = (
@@ -127,31 +131,51 @@ def compute_cycle_summary(selected_cycles_tuple, location_filter_tuple):
         / cycle_summary['Total_Weekly_Trips'] * 100
     )
     cycle_summary['Carpool_Share'] = (
-        (cycle_summary['Total_Carpool_Trips'] + cycle_summary['Total_Vanpool_Trips'])
-        / cycle_summary['Total_Weekly_Trips'] * 100
+        (cycle_summary['Total_Carpool_Trips'] +
+         cycle_summary['Total_Vanpool_Trips']) /
+        cycle_summary['Total_Weekly_Trips'] * 100
     )
     cycle_summary['Active_Share'] = (
         (cycle_summary['Total_Walk_Trips'] + cycle_summary['Total_Bike_Trips'])
         / cycle_summary['Total_Weekly_Trips'] * 100
     )
     cycle_summary['Telework_Share'] = (
-        cycle_summary['Total_Telework_Days'] / cycle_summary['Total_Weekly_Trips'] * 100
+        cycle_summary['Total_Telework_Days'] /
+        cycle_summary['Total_Weekly_Trips'] * 100
     )
-    cycle_summary['DriveAlone_Share'] = cycle_summary['Weighted_DAR'] * 100
-    cycle_summary['DA_Trips_PerDay'] = cycle_summary['Total_Employees'] * cycle_summary['Weighted_DAR']
+    cycle_summary['DriveAlone_Share'] = (
+        cycle_summary['Weighted_DAR'] * 100
+    )
+    cycle_summary['DA_Trips_PerDay'] = (
+        cycle_summary['Total_Employees'] * cycle_summary['Weighted_DAR']
+    )
 
     if '1993/1994' in cycle_summary['Survey_Cycle'].values:
-        baseline_1993 = cycle_summary[cycle_summary['Survey_Cycle'] == '1993/1994']['Weighted_DAR'].iloc[0]
-        cycle_summary['Change_from_1993'] = cycle_summary['Weighted_DAR'] - baseline_1993
+        baseline_1993 = cycle_summary[
+            cycle_summary['Survey_Cycle'] == '1993/1994'
+        ]['Weighted_DAR'].iloc[0]
+        cycle_summary['Change_from_1993'] = (
+            cycle_summary['Weighted_DAR'] - baseline_1993
+        )
     if '2007/2008' in cycle_summary['Survey_Cycle'].values:
-        baseline_2007 = cycle_summary[cycle_summary['Survey_Cycle'] == '2007/2008']['Weighted_DAR'].iloc[0]
-        cycle_summary['Change_from_2007'] = cycle_summary['Weighted_DAR'] - baseline_2007
-    cycle_summary['Change_from_Prior'] = cycle_summary['Weighted_DAR'].diff()
-    cycle_summary['Change_from_5Cycles'] = cycle_summary['Weighted_DAR'].diff(5)
+        baseline_2007 = cycle_summary[
+            cycle_summary['Survey_Cycle'] == '2007/2008'
+        ]['Weighted_DAR'].iloc[0]
+        cycle_summary['Change_from_2007'] = (
+            cycle_summary['Weighted_DAR'] - baseline_2007
+        )
+    cycle_summary['Change_from_Prior'] = (
+        cycle_summary['Weighted_DAR'].diff()
+    )
+    cycle_summary['Change_from_5Cycles'] = (
+        cycle_summary['Weighted_DAR'].diff(5)
+    )
     cycle_summary['Overall_Response_Rate'] = (
-        cycle_summary['Total_Surveys_Returned'] / cycle_summary['Total_Employees']
+        cycle_summary['Total_Surveys_Returned'] /
+        cycle_summary['Total_Employees']
     )
     return cycle_summary, filtered_df
+
 
 def calculate_weighted_dar(df_subset):
     """Calculate weighted DAR per PDF protocols (Section I.1)"""
@@ -159,21 +183,40 @@ def calculate_weighted_dar(df_subset):
     total_trips = df_subset['Total_Weekly_Trips'].sum()
     return total_da_trips / total_trips if total_trips > 0 else 0
 
+
 def calculate_unweighted_dar(df_subset):
     """Calculate unweighted DAR (simple average) per PDF Section I.7"""
     return df_subset['Drive_Alone_Rate'].mean()
 
-# Main app
+
 def main():
     # Header
-    st.markdown('<div class="main-header">🚌 Bellevue CTR Performance Dashboard</div>', unsafe_allow_html=True)
-    st.markdown('<div class="sub-header">Official Analysis | Transportation Demand Management Program | 1993-2025</div>', unsafe_allow_html=True)
+    st.markdown(
+        '<div class="main-header">'
+        '🚌 Bellevue CTR Performance Dashboard'
+        '</div>',
+        unsafe_allow_html=True
+    )
+    st.markdown(
+        '<div class="sub-header">'
+        'Official Analysis | Transportation Demand Management Program | '
+        '1993-2025'
+        '</div>',
+        unsafe_allow_html=True
+    )
     
     # Load data
     try:
         df = load_data()
     except FileNotFoundError:
-        st.error("⚠️ Data file not found. Please ensure CTR_Master_Dataset_2003-2025_CLEANED.csv is in the same directory.")
+        st.error(
+            "⚠️ Data file not found. Please ensure "
+            "CTR_Master_Dataset_2003-2025_CLEANED.csv is in the same "
+            "directory."
+        )
+        st.stop()
+    except Exception as e:
+        st.error(f"⚠️ Error loading data: {str(e)}")
         st.stop()
     
     # Sidebar filters
@@ -202,15 +245,22 @@ def main():
     metric_type = st.sidebar.radio(
         "DAR Calculation Method",
         options=["Weighted (Official)", "Unweighted (Worksite Average)"],
-        help="Weighted: Employee/trip-weighted (primary metric). Unweighted: Simple average across worksites."
+        help=(
+            "Weighted: Employee/trip-weighted (primary metric). "
+            "Unweighted: Simple average across worksites."
+        )
     )
     
-    # Cached cycle summary by filter (avoids recompute on tab/metric_type changes)
+    # Cached cycle summary by filter
+    # (avoids recompute on tab/metric_type changes)
     cycle_summary, filtered_df = compute_cycle_summary(
         tuple(selected_cycles), tuple(location_filter)
     )
     if cycle_summary is None or filtered_df.empty:
-        st.warning("No data available for selected filters. Please adjust your selection.")
+        st.warning(
+            "No data available for selected filters. "
+            "Please adjust your selection."
+        )
         st.stop()
 
     # Select which DAR to display based on sidebar selection
@@ -226,12 +276,17 @@ def main():
     st.subheader("📊 Key Performance Indicators (Official Metrics)")
     
     # Protocol note
-    st.markdown("""
+    st.markdown(
+        """
     <div class="protocol-note">
-    <strong>📋 Analysis Protocol:</strong> Per CTR Data Analysis Guidelines (Updated 3/24/2017), metrics are calculated using weighted averages 
-    (trip/employee-weighted) as the primary official measure. Unweighted averages (simple worksite average) available for comparison.
+    <strong>📋 Analysis Protocol:</strong> Per CTR Data Analysis Guidelines
+    (Updated 3/24/2017), metrics are calculated using weighted averages
+    (trip/employee-weighted) as the primary official measure. Unweighted
+    averages (simple worksite average) available for comparison.
     </div>
-    """, unsafe_allow_html=True)
+    """,
+        unsafe_allow_html=True
+    )
     
     # Get latest and baseline values
     latest_cycle = cycle_summary.iloc[-1]
@@ -241,8 +296,11 @@ def main():
     col1, col2, col3, col4, col5 = st.columns(5)
     
     with col1:
-        vmt_change = ((latest_cycle['Avg_VMT_per_Employee'] - baseline_cycle['Avg_VMT_per_Employee']) 
-                      / baseline_cycle['Avg_VMT_per_Employee'] * 100)
+        vmt_change = (
+            (latest_cycle['Avg_VMT_per_Employee'] -
+             baseline_cycle['Avg_VMT_per_Employee']) /
+            baseline_cycle['Avg_VMT_per_Employee'] * 100
+        )
         st.metric(
             label="VMT per Employee",
             value=f"{latest_cycle['Avg_VMT_per_Employee']:.2f}",
@@ -251,8 +309,11 @@ def main():
         )
     
     with col2:
-        dar_change = ((latest_cycle['Weighted_DAR'] - baseline_cycle['Weighted_DAR']) 
-                      / baseline_cycle['Weighted_DAR'] * 100)
+        dar_change = (
+            (latest_cycle['Weighted_DAR'] -
+             baseline_cycle['Weighted_DAR']) /
+            baseline_cycle['Weighted_DAR'] * 100
+        )
         st.metric(
             label=f"{dar_label}",
             value=f"{latest_cycle['Display_DAR']:.1%}",
@@ -268,8 +329,11 @@ def main():
         )
     
     with col4:
-        emp_change = ((latest_cycle['Total_Employees'] - baseline_cycle['Total_Employees']) 
-                      / baseline_cycle['Total_Employees'] * 100)
+        emp_change = (
+            (latest_cycle['Total_Employees'] -
+             baseline_cycle['Total_Employees']) /
+            baseline_cycle['Total_Employees'] * 100
+        )
         st.metric(
             label="Employees Covered",
             value=f"{latest_cycle['Total_Employees']:,.0f}",
@@ -287,10 +351,12 @@ def main():
     col1, col2, col3, col4 = st.columns(4)
     
     with col1:
+        worksite_delta = (latest_cycle['Worksites'] -
+                          baseline_cycle['Worksites'])
         st.metric(
             label="Worksites",
             value=f"{latest_cycle['Worksites']:.0f}",
-            delta=f"+{latest_cycle['Worksites'] - baseline_cycle['Worksites']:.0f} from baseline"
+            delta=f"+{worksite_delta:.0f} from baseline"
         )
     
     with col2:
@@ -301,7 +367,8 @@ def main():
         )
     
     with col3:
-        if 'Change_from_2007' in cycle_summary.columns and latest_cycle['Change_from_2007'] is not None:
+        if ('Change_from_2007' in cycle_summary.columns and
+                latest_cycle['Change_from_2007'] is not None):
             st.metric(
                 label="Change from 2007",
                 value=f"{latest_cycle['Change_from_2007']:+.3f}",
@@ -309,7 +376,8 @@ def main():
             )
     
     with col4:
-        if 'Change_from_5Cycles' in cycle_summary.columns and not pd.isna(latest_cycle['Change_from_5Cycles']):
+        if ('Change_from_5Cycles' in cycle_summary.columns and
+                not pd.isna(latest_cycle['Change_from_5Cycles'])):
             st.metric(
                 label="Change from 5 Cycles",
                 value=f"{latest_cycle['Change_from_5Cycles']:+.3f}",
@@ -321,22 +389,29 @@ def main():
     
     # Tab layout
     tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
-        "📈 DAR & NDAT Analysis", 
+        "📈 DAR & NDAT Analysis",
         "🎯 Official Calculations",
-        "🚌 Mode Split Details", 
+        "🚌 Mode Split Details",
         "🏢 Worksite Performance",
         "📊 Compliance & Quality",
         "📋 Data Export"
     ])
     
     with tab1:
-        st.subheader("Drive-Alone Rate (DAR) & Non-Drive-Alone Travel (NDAT)")
-        
+        st.subheader(
+            "Drive-Alone Rate (DAR) & Non-Drive-Alone Travel (NDAT)"
+        )
+
         # Weighted vs Unweighted comparison
         st.markdown("#### Weighted vs. Unweighted DAR Comparison")
-        
-        comparison_df = cycle_summary[['Survey_Cycle', 'Weighted_DAR', 'Unweighted_DAR']].copy()
-        comparison_df['Difference'] = comparison_df['Weighted_DAR'] - comparison_df['Unweighted_DAR']
+
+        comparison_df = cycle_summary[
+            ['Survey_Cycle', 'Weighted_DAR', 'Unweighted_DAR']
+        ].copy()
+        comparison_df['Difference'] = (
+            comparison_df['Weighted_DAR'] -
+            comparison_df['Unweighted_DAR']
+        )
         
         fig_comparison = go.Figure()
         
@@ -368,11 +443,16 @@ def main():
         
         st.plotly_chart(fig_comparison, width='stretch')
         
-        st.info("""
-        **Weighted DAR** (primary metric): Trip-volume weighted average. Large employers have proportionally more influence.  
-        **Unweighted DAR**: Simple average across all worksites. Each employer weighted equally regardless of size.  
-        Per official protocols, **Weighted DAR is the primary metric** for WSDOT reporting and goal tracking.
-        """)
+        st.info(
+            """
+        **Weighted DAR** (primary metric): Trip-volume weighted average.
+        Large employers have proportionally more influence.
+        **Unweighted DAR**: Simple average across all worksites. Each
+        employer weighted equally regardless of size.
+        Per official protocols, **Weighted DAR is the primary metric**
+        for WSDOT reporting and goal tracking.
+        """
+        )
         
         # NDAT trends
         st.markdown("---")
@@ -394,20 +474,31 @@ def main():
         
         with col2:
             # Changes from baselines
-            baseline_changes = cycle_summary[['Survey_Cycle', 'Change_from_1993', 
-                                             'Change_from_2007', 'Change_from_Prior']].tail(1)
+            baseline_changes = cycle_summary[
+                ['Survey_Cycle', 'Change_from_1993',
+                 'Change_from_2007', 'Change_from_Prior']
+            ].tail(1)
             
             if not baseline_changes.empty:
                 latest = baseline_changes.iloc[0]
                 
                 st.markdown("**Latest Cycle Comparisons:**")
                 if latest['Change_from_1993'] is not None:
-                    st.metric("Change from 1993", f"{latest['Change_from_1993']:+.3f}", 
-                             help="Improvement since CTR program start")
+                    st.metric(
+                        "Change from 1993",
+                        f"{latest['Change_from_1993']:+.3f}",
+                        help="Improvement since CTR program start"
+                    )
                 if latest['Change_from_2007'] is not None:
-                    st.metric("Change from 2007", f"{latest['Change_from_2007']:+.3f}",
-                             help="Improvement since current framework baseline")
-                st.metric("Change from Prior Cycle", f"{latest['Change_from_Prior']:+.3f}")
+                    st.metric(
+                        "Change from 2007",
+                        f"{latest['Change_from_2007']:+.3f}",
+                        help="Improvement since current framework baseline"
+                    )
+                st.metric(
+                    "Change from Prior Cycle",
+                    f"{latest['Change_from_Prior']:+.3f}"
+                )
         
         # Historical DAR trend with goal line
         st.markdown("---")
@@ -442,8 +533,11 @@ def main():
         
         last_3_cycles = list(cycle_summary['Survey_Cycle'].tail(3))
         if len(last_3_cycles) == 3:
-            tmp_data = cycle_summary[cycle_summary['Survey_Cycle'].isin(last_3_cycles)]
-            avg_dar_3cycles = tmp_data['Unweighted_DAR'].mean()  # Unweighted per PDF
+            tmp_data = cycle_summary[
+                cycle_summary['Survey_Cycle'].isin(last_3_cycles)
+            ]
+            # Unweighted per PDF
+            avg_dar_3cycles = tmp_data['Unweighted_DAR'].mean()
             
             col1, col2, col3 = st.columns(3)
             with col1:
@@ -451,10 +545,16 @@ def main():
             with col2:
                 st.metric("3-Cycle Average DAR", f"{avg_dar_3cycles:.1%}")
             with col3:
-                st.metric("Recommended TMP Target", f"{avg_dar_3cycles * 0.95:.1%}",
-                         help="5% reduction from 3-cycle average (example)")
-            
-            st.info("Per analysis guidelines, TMP zone targets use the **unweighted average** DAR across the past 3 survey cycles.")
+                st.metric(
+                    "Recommended TMP Target",
+                    f"{avg_dar_3cycles * 0.95:.1%}",
+                    help="5% reduction from 3-cycle average (example)"
+                )
+
+            st.info(
+                "Per analysis guidelines, TMP zone targets use the "
+                "**unweighted average** DAR across the past 3 survey cycles."
+            )
         
         # DA Trips per Day (PDF Section I.5)
         st.markdown("---")
@@ -473,16 +573,19 @@ def main():
         
         # Show calculation methodology
         with st.expander("📐 Calculation Methodology"):
-            st.markdown("""
-            **Drive-Alone Round Trips per Work Day** = Total Employees × Weighted DAR
-            
+            st.markdown(
+                """
+            **Drive-Alone Round Trips per Work Day** =
+            Total Employees × Weighted DAR
+
             This metric is used to:
             - Establish trip reduction targets
             - Track progress toward CTR goals
             - Calculate vehicles reduced from roadways
-            
+
             Per 2008 CTR Plan methodology (pages 47, 122-123).
-            """)
+            """
+            )
         
         # Environmental impact with calculations
         st.markdown("---")
@@ -506,8 +609,11 @@ def main():
             
             col1, col2, col3 = st.columns(3)
             with col1:
-                st.metric("Annual Trips Reduced", f"{trips_reduced * 250:,.0f}",
-                         help="Compared to baseline DAR")
+                st.metric(
+                    "Annual Trips Reduced",
+                    f"{trips_reduced * 250:,.0f}",
+                    help="Compared to baseline DAR"
+                )
             with col2:
                 st.metric("Annual VMT Reduced", f"{vmt_reduced:,.0f}")
             with col3:
@@ -518,8 +624,10 @@ def main():
         st.subheader("🚌 Detailed Mode Split Analysis")
         
         # Stacked area chart
-        mode_data = cycle_summary[['Survey_Cycle', 'DriveAlone_Share', 'Transit_Share', 
-                                   'Carpool_Share', 'Active_Share', 'Telework_Share']].copy()
+        mode_data = cycle_summary[
+            ['Survey_Cycle', 'DriveAlone_Share', 'Transit_Share',
+             'Carpool_Share', 'Active_Share', 'Telework_Share']
+        ].copy()
         
         fig_modes = go.Figure()
         
@@ -555,10 +663,20 @@ def main():
         
         fig_modes.update_layout(
             title='Mode Share Evolution (% of Total Weekly Trips)',
-            yaxis=dict(title='Percentage', ticksuffix='%', range=[0, 100]),
+            yaxis=dict(
+                title='Percentage',
+                ticksuffix='%',
+                range=[0, 100]
+            ),
             xaxis=dict(title='Survey Cycle'),
             height=500,
-            legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
+            legend=dict(
+                orientation="h",
+                yanchor="bottom",
+                y=1.02,
+                xanchor="right",
+                x=1
+            )
         )
         
         st.plotly_chart(fig_modes, width='stretch')
@@ -619,8 +737,10 @@ def main():
     
     with tab4:
         st.subheader("🏢 Worksite Performance Analysis")
-        
-        latest_employers = filtered_df[filtered_df['Survey_Cycle'] == selected_cycles[-1]].copy()
+
+        latest_employers = filtered_df[
+            filtered_df['Survey_Cycle'] == selected_cycles[-1]
+        ].copy()
         
         if not latest_employers.empty:
             # Top/bottom performers
@@ -629,22 +749,46 @@ def main():
             with col1:
                 st.markdown("#### 🏆 Top Performers (Lowest DAR)")
                 top = latest_employers.nsmallest(15, 'Drive_Alone_Rate')[
-                    ['Organization_Name', 'Drive_Alone_Rate', 'VMT_per_Employee', 'Total_Employees']
+                    ['Organization_Name', 'Drive_Alone_Rate',
+                     'VMT_per_Employee', 'Total_Employees']
                 ]
                 top_display = top.copy()
-                top_display['Drive_Alone_Rate'] = top_display['Drive_Alone_Rate'].apply(lambda x: f"{x:.1%}")
-                top_display['VMT_per_Employee'] = top_display['VMT_per_Employee'].round(2)
-                st.dataframe(top_display, hide_index=True, width='stretch', height=500)
+                top_display['Drive_Alone_Rate'] = (
+                    top_display['Drive_Alone_Rate'].apply(
+                        lambda x: f"{x:.1%}"
+                    )
+                )
+                top_display['VMT_per_Employee'] = (
+                    top_display['VMT_per_Employee'].round(2)
+                )
+                st.dataframe(
+                    top_display,
+                    hide_index=True,
+                    width='stretch',
+                    height=500
+                )
             
             with col2:
                 st.markdown("#### ⚠️ Needs Support (Highest DAR)")
                 bottom = latest_employers.nlargest(15, 'Drive_Alone_Rate')[
-                    ['Organization_Name', 'Drive_Alone_Rate', 'VMT_per_Employee', 'Total_Employees']
+                    ['Organization_Name', 'Drive_Alone_Rate',
+                     'VMT_per_Employee', 'Total_Employees']
                 ]
                 bottom_display = bottom.copy()
-                bottom_display['Drive_Alone_Rate'] = bottom_display['Drive_Alone_Rate'].apply(lambda x: f"{x:.1%}")
-                bottom_display['VMT_per_Employee'] = bottom_display['VMT_per_Employee'].round(2)
-                st.dataframe(bottom_display, hide_index=True, width='stretch', height=500)
+                bottom_display['Drive_Alone_Rate'] = (
+                    bottom_display['Drive_Alone_Rate'].apply(
+                        lambda x: f"{x:.1%}"
+                    )
+                )
+                bottom_display['VMT_per_Employee'] = (
+                    bottom_display['VMT_per_Employee'].round(2)
+                )
+                st.dataframe(
+                    bottom_display,
+                    hide_index=True,
+                    width='stretch',
+                    height=500
+                )
             
             # Distribution
             st.markdown("---")
@@ -678,12 +822,20 @@ def main():
             st.metric("Overall Response Rate", f"{avg_response:.1%}")
         
         with col2:
-            compliant = (latest_employers['Response_Rate'] >= 0.50).sum() if not latest_employers.empty else 0
-            total = len(latest_employers) if not latest_employers.empty else 0
+            compliant = (
+                (latest_employers['Response_Rate'] >= 0.50).sum()
+                if not latest_employers.empty else 0
+            )
+            total = (
+                len(latest_employers) if not latest_employers.empty else 0
+            )
             st.metric("Sites Meeting 50% Threshold", f"{compliant}/{total}")
         
         with col3:
-            st.metric("Total Surveys Returned", f"{latest_cycle['Total_Surveys_Returned']:,.0f}")
+            st.metric(
+                "Total Surveys Returned",
+                f"{latest_cycle['Total_Surveys_Returned']:,.0f}"
+            )
         
         # Response rate trend
         fig_response = px.line(
@@ -694,28 +846,38 @@ def main():
             markers=True
         )
         fig_response.update_yaxes(tickformat='.1%', title='Response Rate')
-        fig_response.add_hline(y=0.50, line_dash="dash", line_color="red", annotation_text="50% Target")
+        fig_response.add_hline(
+            y=0.50,
+            line_dash="dash",
+            line_color="red",
+            annotation_text="50% Target"
+        )
         fig_response.update_layout(height=400)
         st.plotly_chart(fig_response, width='stretch')
         
         # Data quality note
-        st.info("""
+        st.info(
+            """
         **Data Quality Standards (Per PDF Section II):**
         - Surveys are census-based (not sample)
         - Expanded Surveys Returned used for weighting
         - Minimum 50% response rate required for compliance
-        - 2007 protocol change: 1-person motorcycles now count as drive-alone
-        """)
+        - 2007 protocol change: 1-person motorcycles now count as
+          drive-alone
+        """
+        )
     
     with tab6:
         st.subheader("📋 Data Export & Summary Tables")
         
         # Summary table with all key metrics
         st.markdown("#### Comprehensive Survey Cycle Summary")
-        
-        export_cols = ['Survey_Cycle', 'Worksites', 'Total_Employees', 'Weighted_DAR', 
-                      'Unweighted_DAR', 'NDAT', 'Avg_VMT_per_Employee', 'DA_Trips_PerDay',
-                      'Overall_Response_Rate', 'Total_Weekly_Trips']
+
+        export_cols = [
+            'Survey_Cycle', 'Worksites', 'Total_Employees', 'Weighted_DAR',
+            'Unweighted_DAR', 'NDAT', 'Avg_VMT_per_Employee',
+            'DA_Trips_PerDay', 'Overall_Response_Rate', 'Total_Weekly_Trips'
+        ]
         
         export_df = cycle_summary[export_cols].copy()
         
@@ -736,20 +898,22 @@ def main():
         
         # Download button
         csv = export_df.to_csv(index=False)
+        timestamp = pd.Timestamp.now().strftime('%Y%m%d')
         st.download_button(
             label="📥 Download Summary (CSV)",
             data=csv,
-            file_name=f"bellevue_ctr_official_summary_{pd.Timestamp.now().strftime('%Y%m%d')}.csv",
+            file_name=f"bellevue_ctr_official_summary_{timestamp}.csv",
             mime="text/csv"
         )
         
         # Analysis guidelines reference
         st.markdown("---")
         st.markdown("#### 📋 Analysis Guidelines Reference")
-        st.markdown("""
-        This dashboard implements all calculations from:  
+        st.markdown(
+            """
+        This dashboard implements all calculations from:
         **CTR Data Analysis Guidelines** (Updated 3/24/2017)
-        
+
         **Key Calculations Implemented:**
         1. ✅ Drive-Alone Rate (DAR) - Weighted & Unweighted
         2. ✅ Non-Drive-Alone Travel (NDAT)
@@ -759,20 +923,25 @@ def main():
         6. ✅ VMT per Employee (2007-present)
         7. ✅ Simple/Unweighted Averages
         8. ✅ Response Rate Tracking
-        
+
         All formulas follow official City of Bellevue protocols.
-        """)
+        """
+        )
     
     # Footer
     st.markdown("---")
-    st.markdown("""
+    st.markdown(
+        """
     <div style='text-align: center; color: #666; padding: 1rem;'>
         <strong>City of Bellevue Transportation Department</strong><br>
         Commute Trip Reduction (CTR) Program - Official Analysis Dashboard<br>
         Based on: CTR Data Analysis Guidelines (Updated 3/24/2017)<br>
         Data: 1993-2025 | Dashboard Updated: February 2026
     </div>
-    """, unsafe_allow_html=True)
+    """,
+        unsafe_allow_html=True
+    )
+
 
 if __name__ == "__main__":
     main()
