@@ -47,26 +47,41 @@ def check_password():
     col1, col2, col3 = st.columns([1, 2, 1])
     
     with col2:
-        with st.form("login_form"):
-            username = st.text_input("Username", key="username")
-            password = st.text_input("Password", type="password", key="password")
-            submit = st.form_submit_button("Login", use_container_width=True)
-            
-            if submit:
-                # Check credentials
-                if username in DEFAULT_USERS:
-                    if DEFAULT_USERS[username] == hash_password(password):
+        # Use form with unique key names to avoid session state conflicts
+        username_input = st.text_input("Username")
+        password_input = st.text_input("Password", type="password")
+        col_submit, col_blank = st.columns([1, 1])
+        
+        with col_submit:
+            submit = st.button("Login", use_container_width=True)
+        
+        if submit:
+            # Check credentials
+            if username_input and password_input:
+                if username_input in DEFAULT_USERS:
+                    if (DEFAULT_USERS[username_input] ==
+                            hash_password(password_input)):
                         st.session_state["authenticated"] = True
-                        st.session_state["username"] = username
+                        st.session_state["username"] = username_input
                         st.success("✓ Login successful!")
                         st.rerun()
                     else:
-                        st.error("❌ Invalid username or password")
+                        st.error(
+                            "❌ Invalid username or password"
+                        )
                 else:
-                    st.error("❌ Invalid username or password")
+                    st.error(
+                        "❌ Invalid username or password"
+                    )
+            else:
+                st.error(
+                    "❌ Please enter both username and password"
+                )
         
         # Show default credentials hint (remove in production!)
-        with st.expander("ℹ️ Default Credentials (Development Only)"):
+        with st.expander(
+                "ℹ️ Default Credentials (Development Only)"
+        ):
             st.info(
                 """
                 **Admin Account:**
@@ -77,7 +92,8 @@ def check_password():
                 - Username: `viewer`
                 - Password: `ctr2026`
                 
-                ⚠️ **Important:** Change these in `auth.py` before deployment!
+                ⚠️ **Important:** Change these in `auth.py` before
+                deployment!
                 """
             )
     
