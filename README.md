@@ -4,7 +4,6 @@ Official Analysis Edition for the City of Bellevue Transportation Department. Im
 
 ## Features
 
-- **🔒 Password Protection** – Secure login system to protect dashboard access
 - **Drive-Alone Rate (DAR)** – Weighted and unweighted metrics per official protocols  
 - **Non-Drive-Alone Travel (NDAT)** – Trend and baseline comparisons  
 - **Mode split** – Transit, carpool, active, telework  
