@@ -77,25 +77,6 @@ def check_password():
                 st.error(
                     "❌ Please enter both username and password"
                 )
-        
-        # Show default credentials hint (remove in production!)
-        with st.expander(
-                "ℹ️ Default Credentials (Development Only)"
-        ):
-            st.info(
-                """
-                **Admin Account:**
-                - Username: `admin`
-                - Password: `bellevue2026`
-                
-                **Viewer Account:**
-                - Username: `viewer`
-                - Password: `ctr2026`
-                
-                ⚠️ **Important:** Change these in `auth.py` before
-                deployment!
-                """
-            )
     
     return False
 
